@@ -8,6 +8,8 @@ Installation
 
 Clone repository somewhere convenient, possibly /etc/asterisk/agi.
 
+Install python-mosquitto (tested with the version in Debian wheezy).
+
 Copy mqtt.cfg.sample to mqtt.cfg and edit the values. username/password are optional.
 
 
