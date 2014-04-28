@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+
+#
+# Usage:
+# AGI(/etc/asterisk/agi/mqtt,/etc/asterisk/agi/mqtt.cfg,calls/missed)
+# or, to override the extension:
+# AGI(/etc/asterisk/agi/mqtt,/etc/asterisk/agi/mqtt.cfg,calls/missed,+43123456789)
+#
+
+import sys
+from ConfigParser import ConfigParser
+import mosquitto
+import json
+
+conffile, topic = sys.argv[1:3]
+
+config = ConfigParser()
+config.add_section('mqtt')
+# set defaults for anonymous auth
+config.set('mqtt', 'username', '')
+config.set('mqtt', 'password', '')
+config.set('mqtt', 'port', '1883')
+config.read(conffile)
+
+mqtt_server = config.get('mqtt', 'server')
+mqtt_port = config.getint('mqtt', 'port')
+mqtt_username = config.get('mqtt', 'username')
+mqtt_password = config.get('mqtt', 'password')
+
+agi = []
+while 1:
+    line = sys.stdin.readline()
+    if not line or line == "\n":
+        break
+    agi.append(line)
+
+agi = dict([line.rstrip('\n').replace('agi_', '', 1).split(': ', 1) for line in agi])
+
+if len(sys.argv) > 3:
+    agi['extension'] = sys.argv[3]
+
+def agi_exit(rc, *args):
+    if rc != 0:
+        print "VERBOSE rc=%s %s" % (rc, args)
+    sys.exit(rc)
+
+def on_connect(mosq, rc, *args):
+    if rc != 0:
+        agi_exit(1, "Connection failed: %d" % rc)
+
+def on_publish(mosq, *args):
+    # done
+    agi_exit(0)
+
+client = mosquitto.Mosquitto('agi')
+client.username_pw_set(mqtt_username, mqtt_password)
+client.connect(mqtt_server, port=mqtt_port)
+client.on_connect = on_connect
+client.on_publish = on_publish
+
+client.publish(topic, payload=json.dumps(agi))
+client.loop()
+agi_exit(1, "Message publish timed out")
