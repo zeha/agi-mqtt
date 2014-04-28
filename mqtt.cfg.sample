@@ -1,0 +1,4 @@
+[mqtt]
+server = localhost
+username = asterisk
+password = CHANGEME
